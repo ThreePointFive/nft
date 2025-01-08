@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFT Minting</title>
+    <!-- 引入 Ethers.js -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .button {
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 5px;
+        }
+        .button:disabled {
+            background-color: #c7c7c7;
+        }
+        .status {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.6.9/dist/ethers.umd.min.js"></script>
+    <h1>Mint Your NFT</h1>
+    <button id="connectButton" class="button">Connect Wallet</button>
+    <br><br>
+    <button id="mintButton" class="button" disabled>Mint NFT</button>
+    <p id="status" class="status"></p>
+
+    <script>
+        // 链接钱包按钮与 mint 按钮的引用
+        const connectButton = document.getElementById('connectButton');
+        const mintButton = document.getElementById('mintButton');
+        const statusText = document.getElementById('status');
+
+        let provider, signer, userAddress;
+
+        // 合约地址和 ABI
+        const nftContractAddress = '0x8e66c2b38b8f8d523c7e5666fdefb0f84e4ae40b';  // 请替换为实际合约地址
+        const nftAbi = [
+            "function mint(address to, uint256 stageIndex, uint256 quantity, bytes extraData) public"
+        ];
+
+        // 检查 MetaMask 是否已连接
+        async function checkMetaMask() {
+            if (window.ethereum) {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);  // 请求用户授权
+                signer = provider.getSigner();
+                userAddress = await signer.getAddress();
+                updateUI(true);
+            } else {
+                alert("MetaMask is not installed. Please install it and try again.");
+            }
+        }
+
+        // 更新 UI 状态
+        function updateUI(isConnected) {
+            if (isConnected) {
+                connectButton.style.display = "none";
+                mintButton.style.display = "inline-block";
+                statusText.textContent = "Connected with " + userAddress;
+            } else {
+                connectButton.style.display = "inline-block";
+                mintButton.style.display = "none";
+                statusText.textContent = "Please connect your wallet";
+            }
+        }
+
+        // mint 操作
+        async function mintNFT() {
+            try {
+                const stageIndex = 1; // 你可以根据实际情况更改
+                const quantity = 1;   // 你可以根据实际情况更改
+                const extraData = ethers.utils.hexlify(ethers.utils.toUtf8Bytes("extra metadata"));
+
+                // 连接到合约
+                const contract = new ethers.Contract(nftContractAddress, nftAbi, signer);
+                const tx = await contract.mint(userAddress, stageIndex, quantity, extraData);
+                statusText.textContent = "Minting... Transaction Hash: " + tx.hash;
+
+                // 等待交易确认
+                await tx.wait();
+                statusText.textContent = "Minted successfully! Transaction Hash: " + tx.hash;
+            } catch (err) {
+                statusText.textContent = "Error: " + err.message;
+            }
+        }
+
+        // 连接钱包按钮事件监听
+        connectButton.addEventListener('click', async () => {
+            await checkMetaMask();
+        });
+
+        // mint 按钮事件监听
+        mintButton.addEventListener('click', async () => {
+            await mintNFT();
+        });
+
+        // 页面加载时检查钱包连接
+        window.onload = async () => {
+            if (window.ethereum) {
+                const accounts = await provider.listAccounts();
+                if (accounts.length > 0) {
+                    userAddress = accounts[0];
+                    updateUI(true);
+                } else {
+                    updateUI(false);
+                }
+            }
+        };
+    </script>
+    
+</body>
+</html>
